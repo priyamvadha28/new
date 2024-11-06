@@ -1,48 +1,34 @@
 import socket
-import threading 
-import sys
+import threading
 
-clients=[]
-
-def handle_clients(client_socket,client_address):
-
-    print(f"Client {client_address} has connected to the server")
-
-    clients.append(client_socket)
-
+def listen_for_messages(client_socket):
     while True:
         try:
-         message=client_socket.recv(1024).decode()
-
-         if message:
-            broadcast(client_socket,message)
+            message = client_socket.recv(1024).decode('utf-8')
+            if message:
+                print(f"\n{message}")
+                print("You: ", end='', flush=True)  # Prompt for new input after server message
         except:
-           break
+            print("Disconnected from the server.")
+            client_socket.close()
+            break
 
-    print("Disconnected from connection")
+def main():
+    client_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    client_socket.connect(('localhost', 5002))
+    print("Connected to server at localhost:5002")
 
-    clients.remove(client_socket)
-    client_socket.close()
+    listen_thread = threading.Thread(target=listen_for_messages, args=(client_socket,))
+    listen_thread.start()
 
-def broadcast(client_socket,message):
-   for client in clients:
-      try:
-        if client!=client_socket:
-            client.send(message.encode('utf-8'))
-      except:
-         clients.remove(client)
-         client.close()
+    while True:
+        message = input("You: ")
+        if message.lower() == "exit":
+            client_socket.sendall("Client is exiting".encode('utf-8'))
+            client_socket.close()
+            break
+        else:
+            client_socket.sendall(message.encode('utf-8'))
 
-server_socket=socket.socket(socket.AF_INET6,socket.SOCK_STREAM)
-
-host="localhost"
-port=5002
-
-server_socket.bind((host,port))
-
-server_socket.listen()
-
-while True:
-   client_socket,addr=server_socket.accept()
-   thread=threading.Thread(target=handle_clients,args=(client_socket,addr))
-   thread.start()
+if __name__ == "__main__":
+    main()
