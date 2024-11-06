@@ -1,44 +1,45 @@
-import threading
 import socket
-import sys
+import threading
 
-lock=threading.Lock()
+clients = []
 
-def receive_messages(client_socket):
+def handle_clients(client_socket, client_address):
+    print(f"Client {client_address} has connected to the server")
+    clients.append(client_socket)
 
     while True:
         try:
-                message=client_socket.recv(1024).decode()
-                if message:
-                    with lock:
-                        sys.stdout.write("\r\033[K")
-
-                        print(f"Message from Server:{message}")
-
-                        print("YOU:",end='',flush=True)
+            message = client_socket.recv(1024).decode()
+            if message:
+                print(f"Received from {client_address}: {message}")
+                broadcast(client_socket, message)  # Send to all other clients
         except:
-            client_socket.close()
             break
 
-client_socket=socket.socket(socket.AF_INET6,socket.SOCK_STREAM)
+    print(f"Disconnected from {client_address}")
+    clients.remove(client_socket)
+    client_socket.close()
 
-host="localhost"
-port=5002
+def broadcast(sender_socket, message):
+    #print(f"Broadcasting message: {message}")
+    for client in clients:
+        if client != sender_socket:
+            try:
+                client.sendall(f"Broadcast: {message}".encode('utf-8'))
+            except:
+                clients.remove(client)
+                client.close()
 
-client_socket.connect((host,port))
+def start_server():
+    server_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    server_socket.bind(('localhost', 5002))
+    server_socket.listen()
+    print("Server started on localhost:5002")
 
-thread=threading.Thread(target=receive_messages,args=(client_socket,))
-thread.start()
+    while True:
+        client_socket, addr = server_socket.accept()
+        thread = threading.Thread(target=handle_clients, args=(client_socket, addr))
+        thread.start()
 
-while True:
-    try:
-        message=input("YOU:")
-        if message.lower()=="exit":
-            client_socket.send("Client is exiting".encode('utf-8'))
-            client_socket.close()
-            break
-        else:
-            client_socket.send(message.encode('utf-8'))
-    except:
-        client_socket.close()
-        break
+if __name__ == "__main__":
+    start_server()
