@@ -4,7 +4,7 @@ import random
 from queue import PriorityQueue
 
 class RicartAgrawala:
-    def _init_(self, pid, total_processes):
+    def __init__(self, pid, total_processes):
         self.pid = pid
         self.processes = total_processes
         self.lock = threading.Lock()
@@ -21,7 +21,7 @@ class RicartAgrawala:
             if self.pid != i:
                 self.send_message(i)
         while self.reply_count < self.processes - 1:
-            time.sleep(1)
+            time.sleep(0.1)  # Adjusted sleep to make it more responsive
         self.enter_cs()
 
     def send_message(self, target_pid):
@@ -31,7 +31,7 @@ class RicartAgrawala:
     def receive_message(self, sender):
         with self.lock:
             self.timestamp = max(self.timestamp, sender.timestamp) + 1
-            print(f"Process {self.pid} received message from {sender.pid}")
+            print(f"Process {self.pid} received message from {sender.pid} at timestamp {self.timestamp}")
             if not self.requesting_CS or (sender.timestamp, sender.pid) < (self.timestamp, self.pid):
                 self.send_reply(sender)
             else:
@@ -46,7 +46,7 @@ class RicartAgrawala:
 
     def enter_cs(self):
         print(f"Process {self.pid} enters the CS at timestamp {self.timestamp}")
-        time.sleep(random.uniform(0.5, 1.5))
+        time.sleep(random.uniform(0.5, 1.5))  # Simulating critical section execution time
         self.exit_cs()
 
     def exit_cs(self):
@@ -58,11 +58,14 @@ class RicartAgrawala:
             self.send_reply(process)
 
 def process_action(process):
+    time.sleep(random.uniform(0.5, 2))
     process.request_cs()
     time.sleep(random.uniform(0.5, 1.5))
 
-if _name_ == "_main_":
-    num_processes = 5
+if __name__ == "__main__":
+    # Taking user input for number of processes
+    num_processes = int(input("Enter the number of processes: "))
+    
     processes = [RicartAgrawala(i, num_processes) for i in range(num_processes)]
     threads = [threading.Thread(target=process_action, args=(p,)) for p in processes]
 
